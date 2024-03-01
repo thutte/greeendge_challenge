@@ -17,8 +17,7 @@ def main(path_to_checkpoint_file):
     # replace bad labels
     data["label"].replace(to_replace=["sfa", "sha", "sya", "vna", "dfa"], value="malicious", inplace=True)
 
-    # create dataset
-    print("Creating dataset...")
+    # create datasets
     dataset = TaggingDataModule(data)
     dataset.setup()
     dataset.data_train.len += 1
@@ -31,6 +30,7 @@ def main(path_to_checkpoint_file):
     # perform inference and complete data
     predictions = []
     for idx, batch in enumerate(dataloader):
+        print(f"Test batch: {idx+1}", end="\r")
         x, y = batch
         y_model = model.forward(x)
         y_model_f = torch.flatten(y_model, end_dim=1)

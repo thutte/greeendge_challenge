@@ -1,12 +1,17 @@
 import os, subprocess, time, sys
+import warnings
 import pyRAPL
 import pandas as pd
 import numpy as np
 
+from test import main as main_test
+
+warnings.filterwarnings("ignore")
+
 
 def energy_measurement(path_to_checkpoint_file):
     # Number of times test.py will be run to average the energy consumption
-    n_measurements = 10
+    n_measurements = 1
 
     # Setting up the pyRAPL library and choosing the measurements outputs
     pyRAPL.setup()
@@ -16,9 +21,11 @@ def energy_measurement(path_to_checkpoint_file):
     # Measure test.py energy consumption and save it in output_test
     @pyRAPL.measureit(output=output_test)
     def run_test():
-        subprocess.run(["python", os.path.join(os.getcwd(), f"test.py {path_to_checkpoint_file}")])
+        # subprocess.run(["python", os.path.join(os.getcwd(), f"test.py {path_to_checkpoint_file}")])
+        main_test(path_to_checkpoint_file)
 
-    for _ in range(n_measurements + 1):
+    for idx in range(n_measurements + 1):
+        print(f"Script energy measurement #{idx}")
         run_test()
 
     test_df = output_test.data  # exctract df from measurement
@@ -35,7 +42,8 @@ def energy_measurement(path_to_checkpoint_file):
     def run_baseline(sleep_time):
         time.sleep(sleep_time)
 
-    for _ in range(n_measurements):
+    for idx in range(n_measurements):
+        print(f"Baseline energy measurement #{idx+1}")
         run_baseline(mean_time_seconds)  # we measure the base energy consumed by the computer
 
     baseline_df = output_base.data
@@ -62,11 +70,13 @@ def energy_measurement(path_to_checkpoint_file):
 def modifiedF1score(csv_true_file="data/intrusion_big_train.csv", csv_pred_file="data/intrusion_big_train_pred.csv", l=300):
     # load data
     data_pred = pd.read_csv(csv_pred_file)
-    data_true = pd.read_csv(csv_true_file)  # file to test data with labels will not be available to contestants
+    data_true = pd.read_csv(csv_true_file).replace(
+        to_replace=["sfa", "sha", "sya", "vna", "dfa"], value="malicious"
+    )  # file to test data with labels will not be available to contestants
 
     # obtain labels
     labels_true = data_true["label"]
-    labels_pred = data_pred["label"]
+    labels_pred = pd.concat([data_pred["label"], pd.Series(["benign"] * (len(labels_true) - len(data_pred["label"])))], ignore_index=True)
 
     # errors = false_negatives + false_positives
     errors = (labels_pred != labels_true).sum()
@@ -75,21 +85,25 @@ def modifiedF1score(csv_true_file="data/intrusion_big_train.csv", csv_pred_file=
     true_positives = np.logical_and(labels_pred == labels_true, labels_true == "malicious").astype(float)
 
     # get idxs of attacts starting - t_0 in equation
-    attack_idxs = np.where(np.logical_and(labels_true == "malicious", np.roll(labels_true, 1) == "benign"))
+    attack_idxs = np.where(np.logical_and(labels_true == "malicious", np.roll(labels_true, 1) == "benign"))[0]
 
     # scale_array 1+e^-(dt/lambda)
-    scale_array = np.zeros_like(labels_true)
-    for i in range(len(attack_idxs) - 1):
-        delta_t = np.arange(attack_idxs[i + 1] - attack_idxs[i])
-        scale_array[attack_idxs[i] : attack_idxs[i + 1]] = 1 + np.exp(-delta_t / l)
-    delta_t = np.arange(len(scale_array) - attack_idxs[-1])
-    scale_array[attack_idxs[-1] :] = 1 + np.exp(-delta_t / l)
+    if np.size(attack_idxs) != 0:
+        scale_array = np.zeros_like(labels_true)
+        for i in range(len(attack_idxs) - 1):
+            delta_t = np.arange(attack_idxs[i + 1] - attack_idxs[i])
+            scale_array[attack_idxs[i] : attack_idxs[i + 1]] = 1 + np.exp(-delta_t / l)
+        delta_t = np.arange(len(scale_array) - attack_idxs[-1])
+        scale_array[attack_idxs[-1] :] = 1 + np.exp(-delta_t / l)
 
-    # scale true_positives with early detection bonus
-    true_positives_mod = (true_positives * scale_array).sum()
+        # scale true_positives with early detection bonus
+        true_positives_mod = (true_positives * scale_array).sum()
+    else:
+        true_positives_mod = 0
 
     # compute f1 score
-    f1 = true_positives_mod / (true_positives_mod + errors)
+    f1 = true_positives_mod / (true_positives_mod + errors + 1e-6)
+    print(f"F1 score = {f1}")
 
     return f1
 
