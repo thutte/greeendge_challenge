@@ -10,8 +10,8 @@ Train dataset can be found at `data/intrusion_big_train.csv`. Test dataset witho
 
 ## Setting up environment
 ```bash
-git clone https://gitlab.kuleuven.be/networked-systems/public/cyber-threats-detection-through-network-energy-consumption-baseline.git
-cd cyber-threats-detection-through-network-energy-consumption-baseline
+git clone https://github.com/thutte/greeendge_challenge.git
+cd greenedge_challenge
 conda env create -f env.yaml
 conda activate challenge
 ```
