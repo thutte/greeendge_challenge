@@ -49,8 +49,8 @@ def energy_measurement(path_to_checkpoint_file):
     baseline_df = output_base.data
 
     # Save dataframes as csv
-    test_df.to_csv("model_energy.csv", index=False, mode="w")
-    baseline_df.to_csv("baseline_energy.csv", index=False, mode="w")
+    test_df.to_csv("results/model_energy.csv", index=False, mode="w")
+    baseline_df.to_csv("results/baseline_energy.csv", index=False, mode="w")
 
     # real energy is the difference between all energy and base energy
     real_energy_df = test_df.copy()
