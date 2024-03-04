@@ -119,4 +119,12 @@ if __name__ == "__main__":
     path_to_checkpoint_file = sys.argv[1]
     path_to_labeled_data = sys.argv[2]
     path_to_pred_data = sys.argv[3]
+
+    # We deactivate GPU since energy measurement is only done in CPU
+    original_cuda_visible_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "")
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
     main(path_to_checkpoint_file, path_to_labeled_data, path_to_pred_data)
+
+    # Restore the original value of CUDA_VISIBLE_DEVICES
+    os.environ["CUDA_VISIBLE_DEVICES"] = original_cuda_visible_devices
